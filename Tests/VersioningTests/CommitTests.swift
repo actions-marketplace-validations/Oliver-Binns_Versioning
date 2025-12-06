@@ -25,18 +25,61 @@ final class CommitTests: XCTestCase {
         }
     }
     
+    func testSquashedCommits() throws {
+        let commit = try Commit(string: """
+feat: DCMAW-7932 Automate Versioning (#50)
+* chore: added a new step on pull request.yml to validate PR names
+
+* chore: update quality report.yml to include increment version job
+
+* chore: moved validate job to before build and test action
+""")
+        XCTAssertEqual(commit.type, .feature)
+        XCTAssertFalse(commit.isBreakingChange)
+        XCTAssertEqual(commit.message, """
+DCMAW-7932 Automate Versioning (#50)
+* chore: added a new step on pull request.yml to validate PR names
+
+* chore: update quality report.yml to include increment version job
+
+* chore: moved validate job to before build and test action
+""")
+    }
+    
     func testThrowsInvalidPrefixError() throws {
         do {
             _ = try Commit(string: "invalid: adding-optional-initialiser-for-icon")
             XCTFail("Expected error to be thrown")
-        } catch CommitFormatError.invalidPrefix { }
+        } catch CommitFormatError.invalidPrefix(let string) {
+            XCTAssertEqual(string, "invalid")
+        }
+    }   
+    
+    func testThrowsInvalidPrefixErrorDescription() throws {
+        do {
+            _ = try Commit(string: "invalid: adding-optional-initialiser-for-icon")
+            XCTFail("Expected error to be thrown")
+        } catch let error as CommitFormatError {
+            XCTAssertTrue(error.description.contains("\"invalid\" is not an allowed commit prefix."))
+        }
     }
     
     func testThrowsInvalidStructureError() throws {
         do {
             _ = try Commit(string: "feat with no colon / message")
             XCTFail("Expected error to be thrown")
-        } catch CommitFormatError.invalid { }
+        } catch CommitFormatError.invalid(let string) {
+            XCTAssertEqual(string, "feat with no colon / message")
+        }
+    }   
+    
+    func testThrowsInvalidStructureErrorDescription() throws {
+        do {
+            _ = try Commit(string: "feat with no colon / message")
+            XCTFail("Expected error to be thrown")
+        } catch let error as CommitFormatError {
+            XCTAssertTrue(error.description.contains("Invalid commit message format: feat with no colon / message"))
+        }
     }
     
     func testVersionIncrementValues() throws {
@@ -58,6 +101,13 @@ final class CommitTests: XCTestCase {
         try XCTAssertEqual(
             Commit(string: "ci: adding-optional-initialiser-for-icon").versionIncrement,
             nil
+        )
+    }
+
+    func testParsesScope() throws {
+        try XCTAssertEqual(
+            Commit(string: "build(deps): bump github.com/apple/swift-argument-parser from 1.2.3 to 1.5.0 ").scope,
+            "deps"
         )
     }
 }

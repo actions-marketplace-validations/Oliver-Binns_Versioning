@@ -1,4 +1,4 @@
-// swift-tools-version: 5.8.1
+// swift-tools-version: 6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -11,6 +11,10 @@ let package = Package(
         .watchOS(.v9),
         .tvOS(.v16)
     ],
+    products: [
+        .executable(name: "Run", targets: ["Run"]),
+        .library(name: "Versioning", targets: ["Versioning", "GitHubAPI"])
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.2.3"))
     ],
@@ -22,7 +26,12 @@ let package = Package(
         ]),
         .testTarget(name: "RunTests", dependencies: ["Run"]),
         
-        .target(name: "Versioning"),
+        .target(
+            name: "Versioning",
+            swiftSettings: [
+                .unsafeFlags(["-enable-bare-slash-regex"])
+            ]
+        ),
         .testTarget(name: "VersioningTests", dependencies: ["Versioning"]),
         
         .target(name: "GitHubAPI"),

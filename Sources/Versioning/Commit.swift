@@ -1,35 +1,35 @@
 public struct Commit {
     public let type: CommitType
+    public let scope: String?
     public let isBreakingChange: Bool
     public let message: String
-    
+
     init(type: CommitType,
+         scope: String? = nil,
          isBreakingChange: Bool,
          message: String) {
         self.type = type
+        self.scope = scope
         self.isBreakingChange = isBreakingChange
         self.message = message
     }
     
     public init(string: String) throws {
-        let components = string.split(separator: ": ")
-        guard components.count == 2 else {
-            throw CommitFormatError.invalid
-        }
-    
-        self.isBreakingChange = components[0].last == "!"
-        
-        if isBreakingChange {
-            let messageLength = components[0].count
-            let trimmedExclamation = components[0].prefix(messageLength-1)
-            self.type = CommitType(rawValue: String(trimmedExclamation))!
-        } else if let type = CommitType(rawValue: String(components[0])) {
+        let search = /(?<type>[a-z]+)(\((?<scope>[a-z]+)\))?(?<breaking>!)?: (?<message>(.|\n)+)/
+
+        do {
+            guard let match = try search.wholeMatch(in: string) else {
+                throw CommitFormatError.invalid(string)
+            }
+
+            guard let type = CommitType(rawValue: String(match.output.type)) else {
+                throw CommitFormatError.invalidPrefix(match.output.type)
+            }
             self.type = type
-        } else {
-            throw CommitFormatError.invalidPrefix(components[0])
+            self.scope = match.output.scope.map(String.init)
+            self.isBreakingChange = match.output.breaking != nil
+            self.message = String(match.output.message)
         }
-        
-        message = String(components[1])
     }
 }
 
@@ -42,7 +42,7 @@ extension Commit {
         switch type {
         case .feature:
             return .minor
-        case .fix, .refactor, .style:
+        case .fix, .refactor, .style, .build:
             return .patch
         default:
             return nil
